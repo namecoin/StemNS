@@ -1,0 +1,6 @@
+
+Implmentation of the "Tor side" of Proposal 279 ("naming layer api")
+so that actual naming plugins can be tested/prototyped "now" without
+changing Tor.
+
+Presently just a 'proof of concept' that it actually works via Tor.
