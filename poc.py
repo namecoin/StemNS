@@ -100,14 +100,14 @@ class _Attacher(object):
     @defer.inlineCallbacks
     def attach_stream(self, stream, circuits):
         print("attach_stream {}".format(stream))
-        if stream.target_host.endswith('.onion') and stream.target_host != 'timaq4ygg2iegci7.onion':
+        if stream.target_host.endswith('.onion'):
 
             # placeholder service, obviously we can run any number of
             # these etc
             srv = yield self.maybe_launch_service('foo')
             remap = yield srv.request_lookup(stream.target_host)
 
-            if remap is not None:
+            if remap is not None and remap != stream.target_host:
                 cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
                 yield self._tor.protocol.queue_command(cmd)
         defer.returnValue(None)  # ask Tor to attach the stream, always
