@@ -3,4 +3,15 @@ Implmentation of the "Tor side" of Proposal 279 ("naming layer api")
 so that actual naming plugins can be tested/prototyped "now" without
 changing Tor.
 
-Presently just a 'proof of concept' that it actually works via Tor.
+It will currently connect to a system tor on localhost:9051 or you can
+change this to 9151 (in poc.py) to react a Tor Browser Bundle
+instance.
+
+This actually works and launches two example services, reached via:
+<something>.<service>.onion where the two services are .pet.onion for
+the ns_petname.py lookup (so try, e.g., "http://scihub.pet.onion" in
+TBB).
+
+The other one is .demo.onion and will always remap to txtorcon's
+documentation hidden-service. So <anything>.demo.onion will redirect
+you to txtorcon's documentation.
