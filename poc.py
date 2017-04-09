@@ -13,6 +13,7 @@
 # ...and then visit any .onion address, and it'll get re-directed to
 # txtorcon documentation.
 
+import re
 import sys
 from os.path import join, split
 
@@ -22,12 +23,30 @@ from twisted.internet.protocol import ProcessProtocol
 from twisted.protocols.basic import LineReceiver
 from zope.interface import implementer
 
+_service_to_command = {
+    "pet": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
+    "demo": [sys.executable, join(split(__file__)[0], 'ns_always_txtorcon.py')],
+}
+
 
 def _sequential_id():
     rtn = 1
     while True:
         yield rtn
         rtn += 1
+
+
+class NameLookupError(Exception):
+    def __init__(self, status):
+        self.status = status
+        msg = {
+            0: 'The name resolution was successful',
+            1: 'Name resolution generic failure',
+            2: 'Name tld not recognized',
+            3: 'Name not registered',
+            4: 'Name resolution timeout exceeded',
+        }
+        super(NameLookupError, self).__init__(msg[status])
 
 
 class _TorNameServiceProtocol(ProcessProtocol, object):
@@ -51,11 +70,19 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
         if args[0] == 'RESOLVED':
             query_id, status, answer = args[1:]
             query_id = int(query_id)
+            status = int(status)
+
             try:
-                self._queries[query_id].callback(answer)
+                d = self._queries[query_id]
                 del self._queries[query_id]
             except KeyError:
                 print("No query {}: {}".format(query_id, self._queries.keys()))
+
+            if status == 0:
+                d.callback(answer)
+            else:
+                err = NameLookupError(status)
+                d.errback(err)
 
     def request_lookup(self, name):
         query_id = next(self._id_gen)
@@ -66,12 +93,18 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
 
 
 @defer.inlineCallbacks
-def spawn_name_service(reactor):
+def spawn_name_service(reactor, name):
     proto = _TorNameServiceProtocol()
+    try:
+        args = _service_to_command[name]
+    except KeyError:
+        raise Exception(
+            "No such service '{}'".format(name)
+        )
     process = yield reactor.spawnProcess(
         proto,
-        sys.executable,
-        ['python', join(split(__file__)[0], 'ns_always_txtorcon.py')],
+        args[0],
+        args,
         env={
             'TOR_NS_STATE_LOCATION': '/var/lib/tor/ns_state',
             'TOR_NS_PROTO_VERSION': '1',
@@ -93,7 +126,7 @@ class _Attacher(object):
     def maybe_launch_service(self, name):
         srv = self._services.get(name, None)
         if srv is None:
-            srv = yield spawn_name_service(self._reactor)
+            srv = yield spawn_name_service(self._reactor, name)
             self._services[name] = srv
         defer.returnValue(srv)
 
@@ -102,10 +135,27 @@ class _Attacher(object):
         print("attach_stream {}".format(stream))
         if stream.target_host.endswith('.onion'):
 
-            # placeholder service, obviously we can run any number of
-            # these etc
-            srv = yield self.maybe_launch_service('foo')
-            remap = yield srv.request_lookup(stream.target_host)
+            m = re.match(r'([a-zA-Z0-9]*)\.([a-zA-Z]*)\.onion', stream.target_host)
+            if m is None:
+                return
+
+            domain = m.group(1)
+            service = m.group(2)
+
+            try:
+                srv = yield self.maybe_launch_service(service)
+            except Exception:
+                print("Unable to launch service for '{}'".format(service))
+                return
+
+            try:
+                remap = yield srv.request_lookup(domain)
+                if not remap.endswith('.onion'):
+                    remap = '{}.onion'.format(remap)
+                print("{} becomes {}".format(domain, remap))
+            except NameLookupError as e:
+                print("lookup failed: {}".format(e))
+                remap = None
 
             if remap is not None and remap != stream.target_host:
                 cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
@@ -126,7 +176,6 @@ def main(reactor):
 
     # run all stream-attachments through our thing
     ns_service = _Attacher(reactor, tor)
-    yield ns_service.maybe_launch_service('foo')
     yield state.set_attacher(ns_service, reactor)
 
     # wait forever
