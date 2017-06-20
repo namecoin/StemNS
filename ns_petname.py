@@ -4,10 +4,10 @@
 import sys
 
 pet_names = {
-    'txtorcon': 'timaq4ygg2iegci7.onion',
-    'duckduckgo': '3g2upl4pq6kufc4m.onion',
-    'torist': 'toristinkirir4xj.onion',
-    'scihub': 'scihub22266oqcxt.onion',
+    'txtorcon.pet.onion': 'timaq4ygg2iegci7.onion',
+    'duckduckgo.pet.onion': '3g2upl4pq6kufc4m.onion',
+    'torist.pet.onion': 'toristinkirir4xj.onion',
+    'scihub.pet.onion': 'scihub22266oqcxt.onion',
 }
 
 

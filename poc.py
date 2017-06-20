@@ -24,8 +24,8 @@ from twisted.protocols.basic import LineReceiver
 from zope.interface import implementer
 
 _service_to_command = {
-    "pet": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
-    "demo": [sys.executable, join(split(__file__)[0], 'ns_always_txtorcon.py')],
+    "pet.onion": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
+    "demo.onion": [sys.executable, join(split(__file__)[0], 'ns_always_txtorcon.py')],
 }
 
 
@@ -96,7 +96,13 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
 def spawn_name_service(reactor, name):
     proto = _TorNameServiceProtocol()
     try:
-        args = _service_to_command[name]
+        args = None
+        for service in _service_to_command:
+            if name.endswith("." + service):
+                args = _service_to_command[service]
+                break
+        if args is None:
+            raise KeyError()
     except KeyError:
         raise Exception(
             "No such service '{}'".format(name)
@@ -133,33 +139,23 @@ class _Attacher(object):
     @defer.inlineCallbacks
     def attach_stream(self, stream, circuits):
         print("attach_stream {}".format(stream))
-        if stream.target_host.endswith('.onion'):
 
-            m = re.match(r'([a-zA-Z0-9]*)\.([a-zA-Z]*)\.onion', stream.target_host)
-            if m is None:
-                return
+        try:
+            srv = yield self.maybe_launch_service(stream.target_host)
+        except Exception:
+            print("Unable to launch service for '{}'".format(stream.target_host))
+            return
 
-            domain = m.group(1)
-            service = m.group(2)
+        try:
+            remap = yield srv.request_lookup(stream.target_host)
+            print("{} becomes {}".format(stream.target_host, remap))
+        except NameLookupError as e:
+            print("lookup failed: {}".format(e))
+            remap = None
 
-            try:
-                srv = yield self.maybe_launch_service(service)
-            except Exception:
-                print("Unable to launch service for '{}'".format(service))
-                return
-
-            try:
-                remap = yield srv.request_lookup(domain)
-                if not remap.endswith('.onion'):
-                    remap = '{}.onion'.format(remap)
-                print("{} becomes {}".format(domain, remap))
-            except NameLookupError as e:
-                print("lookup failed: {}".format(e))
-                remap = None
-
-            if remap is not None and remap != stream.target_host:
-                cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
-                yield self._tor.protocol.queue_command(cmd)
+        if remap is not None and remap != stream.target_host:
+            cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
+            yield self._tor.protocol.queue_command(cmd)
         defer.returnValue(None)  # ask Tor to attach the stream, always
 
 
