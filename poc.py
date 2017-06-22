@@ -96,13 +96,7 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
 def spawn_name_service(reactor, name):
     proto = _TorNameServiceProtocol()
     try:
-        args = None
-        for service in _service_to_command:
-            if name.endswith("." + service):
-                args = _service_to_command[service]
-                break
-        if args is None:
-            raise KeyError()
+        args = _service_to_command[name]
     except KeyError:
         raise Exception(
             "No such service '{}'".format(name)
@@ -130,10 +124,18 @@ class _Attacher(object):
 
     @defer.inlineCallbacks
     def maybe_launch_service(self, name):
-        srv = self._services.get(name, None)
+        suffix = None
+        srv = None
+
+        for candidate_suffix in _service_to_command:
+            if name.endswith("." + candidate_suffix):
+                suffix = candidate_suffix
+                srv = self._services.get(suffix, None)
+                break
+
         if srv is None:
-            srv = yield spawn_name_service(self._reactor, name)
-            self._services[name] = srv
+            srv = yield spawn_name_service(self._reactor, suffix)
+            self._services[suffix] = srv
         defer.returnValue(srv)
 
     @defer.inlineCallbacks
