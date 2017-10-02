@@ -15,6 +15,7 @@
 
 import re
 import sys
+import itertools
 from os.path import join, split
 
 import txtorcon
@@ -27,13 +28,6 @@ _service_to_command = {
     "pet.onion": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
     "demo.onion": [sys.executable, join(split(__file__)[0], 'ns_always_txtorcon.py')],
 }
-
-
-def _sequential_id():
-    rtn = 1
-    while True:
-        yield rtn
-        rtn += 1
 
 
 class NameLookupError(Exception):
@@ -55,7 +49,7 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
     def __init__(self):
         super(_TorNameServiceProtocol, self).__init__()
         self._queries = dict()
-        self._id_gen = _sequential_id()
+        self._id_gen = itertools.count(1)
 
     def childDataReceived(self, fd, data):
         if fd == 1:
