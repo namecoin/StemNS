@@ -62,7 +62,9 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
     def lineReceived(self, line):
         args = line.split()
         if args[0] == 'RESOLVED':
-            query_id, status, answer = args[1:]
+            # Answer might contain whitespace if it's an error message; if so,
+            # len(answer) will be greater than 1.
+            query_id, status, answer = args[1], args[2], args[3:]
             query_id = int(query_id)
             status = int(status)
 
@@ -73,6 +75,10 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
                 print("No query {}: {}".format(query_id, self._queries.keys()))
 
             if status == 0:
+                # Answer should be a domain name or IP address, neither of
+                # which will contain whitespace, so only take the first
+                # whitespace-separated token.
+                answer = answer[0]
                 d.callback(answer)
             else:
                 err = NameLookupError(status)
