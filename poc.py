@@ -148,6 +148,7 @@ class _Attacher(object):
         except NameLookupError as e:
             print("lookup failed: {}".format(e))
             remap = None
+            stream.close()
 
         if remap is not None and remap != stream.target_host:
             cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
