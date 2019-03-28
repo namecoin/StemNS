@@ -1,7 +1,7 @@
 
 # Proposal 279
 
-This is an implmentation of the "Tor side" of Proposal 279 ("naming
+This is an implementation of the "Tor side" of Proposal 279 ("naming
 layer api") so that actual naming plugins can be tested/prototyped
 "now" without changing Tor.
 
