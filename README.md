@@ -13,6 +13,14 @@ It will currently connect to a system tor on localhost:9051 or you can
 change this to 9151 (in poc.py) to react a Tor Browser Bundle
 instance.
 
+Tor must be configured with the following option before launching StemNS:
+
+~~~
+__LeaveStreamsUnattached 1
+~~~
+
+If it's not, StemNS will exit with an error.  In a typical Tor Browser installation, `torrc-defaults` is the correct place to add this option.  The choice to not make StemNS configure this option itself is deliberate; making StemNS configure the option itself would leave a short window during initial connect where name resolution is incorrectly forwarded to the exit relay, which would be a security issue.
+
 This actually works and launches two example services, reached via:
 <something>.<service>.onion where the two services are .pet.onion for
 the ns_petname.py lookup (so try, e.g., "http://scihub.pet.onion" in
