@@ -13,10 +13,12 @@
 # ...and then visit any .onion address, and it'll get re-directed to
 # txtorcon documentation.
 
+import os
 import subprocess
 import sys
 import time
 import itertools
+from copy import deepcopy
 from os.path import join, split
 
 from threading import Thread
@@ -97,13 +99,15 @@ def spawn_name_service(tor, name):
         raise Exception(
             "No such service '{}'".format(name)
         )
+    spawn_env = deepcopy(os.environ)
+    spawn_env.update({
+        'TOR_NS_STATE_LOCATION': '/var/lib/tor/ns_state',
+        'TOR_NS_PROTO_VERSION': '1',
+        'TOR_NS_PLUGIN_OPTIONS': '',
+    })
     process = subprocess.Popen(args, bufsize=1, stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               universal_newlines=True, env={
-            'TOR_NS_STATE_LOCATION': '/var/lib/tor/ns_state',
-            'TOR_NS_PROTO_VERSION': '1',
-            'TOR_NS_PLUGIN_OPTIONS': '',
-        })
+                               universal_newlines=True, env=spawn_env)
 
     proto = _TorNameServiceProtocol(tor, process)
 
