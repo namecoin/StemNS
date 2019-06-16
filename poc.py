@@ -1,28 +1,28 @@
-# note: this needs the 'master' version of txtorcon to run. you can
+# note: this needs stem to run. you can
 # install it in a fresh virtualenv on Debian (after "apt-get install
 # python-virtualenv") like so:
 #
 # virtualenv venv
 # source venv/bin/activate
 # pip install --upgrade pip
-# pip install https://github.com/meejah/txtorcon/archive/master.zip
+# pip install stem
 #
 # Then you can run this:
-# python poc.py
+# python3 poc.py
 #
 # ...and then visit any .onion address, and it'll get re-directed to
 # txtorcon documentation.
 
-import re
+import subprocess
 import sys
+import time
 import itertools
 from os.path import join, split
 
-import txtorcon
-from twisted.internet import defer, task, endpoints
-from twisted.internet.protocol import ProcessProtocol
-from twisted.protocols.basic import LineReceiver
-from zope.interface import implementer
+from threading import Thread
+
+import stem
+from stem.control import EventType, Controller
 
 _service_to_command = {
     "pet.onion": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
@@ -43,21 +43,18 @@ class NameLookupError(Exception):
         super(NameLookupError, self).__init__(msg[status])
 
 
-class _TorNameServiceProtocol(ProcessProtocol, object):
+class _TorNameServiceProtocol(object):
     delimiter = '\n'
 
-    def __init__(self):
-        super(_TorNameServiceProtocol, self).__init__()
+    def __init__(self, tor, process):
         self._queries = dict()
         self._id_gen = itertools.count(1)
+        self._tor = tor
+        self._process = process
 
-    def childDataReceived(self, fd, data):
-        if fd == 1:
-            # XXX just presuming we get these as "lines" -- actually,
-            # want to buffer e.g. with LineReceiver
-            self.lineReceived(data)
-        else:
-            print("Ignoring write to fd {}: {}".format(fd, repr(data)))
+    def watch_stdout(self):
+        for line in self._process.stdout:
+            self.lineReceived(line)
 
     def lineReceived(self, line):
         args = line.split()
@@ -69,7 +66,7 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
             status = int(status)
 
             try:
-                d = self._queries[query_id]
+                stream_id = self._queries[query_id]
                 del self._queries[query_id]
             except KeyError:
                 print("No query {}: {}".format(query_id, self._queries.keys()))
@@ -79,50 +76,47 @@ class _TorNameServiceProtocol(ProcessProtocol, object):
                 # which will contain whitespace, so only take the first
                 # whitespace-separated token.
                 answer = answer[0]
-                d.callback(answer)
+                self._tor.msg('REDIRECTSTREAM ' + stream_id + ' ' + answer)
+                try:
+                    self._tor.attach_stream(stream_id, 0)
+                except stem.UnsatisfiableRequest:
+                    pass
             else:
-                err = NameLookupError(status)
-                d.errback(err)
+                self._tor.close_stream(stream_id, stem.RelayEndReason.RESOLVEFAILED)
 
-    def request_lookup(self, name):
+    def request_lookup(self, stream_id, name):
         query_id = next(self._id_gen)
-        d = defer.Deferred()
-        self._queries[query_id] = d
-        self.transport.write('RESOLVE {} {}\n'.format(query_id, name))
-        return d
+        self._queries[query_id] = stream_id
+        self._process.stdin.write('RESOLVE {} {}\n'.format(query_id, name))
 
 
-@defer.inlineCallbacks
-def spawn_name_service(reactor, name):
-    proto = _TorNameServiceProtocol()
+def spawn_name_service(tor, name):
     try:
         args = _service_to_command[name]
     except KeyError:
         raise Exception(
             "No such service '{}'".format(name)
         )
-    process = yield reactor.spawnProcess(
-        proto,
-        args[0],
-        args,
-        env={
+    process = subprocess.Popen(args, bufsize=1, stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True, env={
             'TOR_NS_STATE_LOCATION': '/var/lib/tor/ns_state',
             'TOR_NS_PROTO_VERSION': '1',
             'TOR_NS_PLUGIN_OPTIONS': '',
-        },
-#        path='/tmp',
-    )
-    defer.returnValue(proto)
+        })
 
+    proto = _TorNameServiceProtocol(tor, process)
 
-@implementer(txtorcon.interface.IStreamAttacher)
+    t = Thread(target=proto.watch_stdout)
+    t.start()
+
+    return proto
+
 class _Attacher(object):
-    def __init__(self, reactor, tor):
-        self._reactor = reactor
+    def __init__(self, tor):
         self._tor = tor
         self._services = {}
 
-    @defer.inlineCallbacks
     def maybe_launch_service(self, name):
         suffix = None
         srv = None
@@ -134,48 +128,60 @@ class _Attacher(object):
                 break
 
         if srv is None:
-            srv = yield spawn_name_service(self._reactor, suffix)
+            srv = spawn_name_service(self._tor, suffix)
             self._services[suffix] = srv
-        defer.returnValue(srv)
+        return srv
 
-    @defer.inlineCallbacks
-    def attach_stream(self, stream, circuits):
+    def attach_stream(self, stream):
         print("attach_stream {}".format(stream))
 
-        try:
-            srv = yield self.maybe_launch_service(stream.target_host)
-        except Exception:
-            print("Unable to launch service for '{}'".format(stream.target_host))
+        # Not all stream events need to be attached.
+        # TODO: check with Tor Project whether NEW and NEWRESOLVE are the correct list.
+        if stream.status not in [stem.StreamStatus.NEW, stem.StreamStatus.NEWRESOLVE]:
             return
 
         try:
-            remap = yield srv.request_lookup(stream.target_host)
-            print("{} becomes {}".format(stream.target_host, remap))
-        except NameLookupError as e:
-            print("lookup failed: {}".format(e))
-            remap = None
-            stream.close()
+            srv = self.maybe_launch_service(stream.target_address)
+        except Exception:
+            print("Unable to launch service for '{}'".format(stream.target_address))
+            try:
+                self._tor.attach_stream(stream.id, 0)
+            except stem.UnsatisfiableRequest:
+                pass
+            return
 
-        if remap is not None and remap != stream.target_host:
-            cmd = 'REDIRECTSTREAM {} {}'.format(stream.id, remap)
-            yield self._tor.protocol.queue_command(cmd)
-        defer.returnValue(None)  # ask Tor to attach the stream, always
+        srv.request_lookup(stream.id, stream.target_address)
 
 
-@task.react
-@defer.inlineCallbacks
-def main(reactor):
-    # this will connect to TBB
-    control_ep = endpoints.TCP4ClientEndpoint(reactor, 'localhost', 9051)
-    tor = yield txtorcon.connect(reactor, control_ep)
-    print("tor {}".format(tor))
+def main():
+    while True:
+        try:
+            # open main controller
+            controller = Controller.from_port(port = 9051)
+            break
+        except stem.SocketError:
+            time.sleep(0.005)
 
-    state = yield tor.create_state()
-    print("state {}".format(state))
+    controller.authenticate()
 
-    # run all stream-attachments through our thing
-    ns_service = _Attacher(reactor, tor)
-    yield state.set_attacher(ns_service, reactor)
+    print("[notice] Successfully connected to the Tor control port.")
 
-    # wait forever
-    yield defer.Deferred()
+    if controller.get_conf('__LeaveStreamsUnattached') != '1':
+        sys.exit('[err] torrc is unsafe for name lookups.  Try adding the line "__LeaveStreamsUnattached 1" to torrc-defaults')
+
+    attacher = _Attacher(controller)
+
+    controller.add_event_listener(attacher.attach_stream, EventType.STREAM)
+
+    print('[debug] Now monitoring stream connections.')
+
+    try:
+        # Sleeping for 365 days, as upstream OnioNS does, appears to be incompatible with Windows.
+        # Therefore, we instead sleep for 1 day inside an infinite loop.
+        while True:
+            time.sleep(60 * 60 * 24 * 1) #basically, wait indefinitely
+    except KeyboardInterrupt:
+        print('')
+
+if __name__ == '__main__':
+  main()
