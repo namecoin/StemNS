@@ -26,11 +26,8 @@ from threading import Thread
 import stem
 from stem.control import EventType, Controller
 
-_service_to_command = {
-    "pet.onion": [sys.executable, join(split(__file__)[0], 'ns_petname.py')],
-    "demo.onion": [sys.executable, join(split(__file__)[0], 'ns_always_txtorcon.py')],
-}
-
+from settings_services import _service_to_command
+from settings_port import tor_control_port
 
 class NameLookupError(Exception):
     def __init__(self, status):
@@ -161,7 +158,7 @@ def main():
     while True:
         try:
             # open main controller
-            controller = Controller.from_port(port = 9051)
+            controller = Controller.from_port(port = tor_control_port)
             break
         except stem.SocketError:
             time.sleep(0.005)
