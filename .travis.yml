@@ -1,0 +1,15 @@
+dist: xenial
+language: python
+python:
+    - 3.6
+    - 3.7
+git:
+  depth: false
+before_install:
+  - git tag
+install:
+  - pip install stem flake8
+cache:
+  - pip: true
+script:
+    - flake8 . --count --select=E,F,W,C90 --show-source --statistics
