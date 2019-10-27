@@ -19,7 +19,6 @@ import sys
 import time
 import itertools
 from copy import deepcopy
-from os.path import join, split
 
 from threading import Thread
 
@@ -28,6 +27,7 @@ from stem.control import EventType, Controller
 
 from settings_services import _service_to_command
 from settings_port import tor_control_port
+
 
 class NameLookupError(Exception):
     def __init__(self, status):
@@ -81,7 +81,8 @@ class _TorNameServiceProtocol(object):
                 except stem.UnsatisfiableRequest:
                     pass
             else:
-                self._tor.close_stream(stream_id, stem.RelayEndReason.RESOLVEFAILED)
+                self._tor.close_stream(stream_id,
+                                       stem.RelayEndReason.RESOLVEFAILED)
 
     def request_lookup(self, stream_id, name):
         query_id = next(self._id_gen)
@@ -113,6 +114,7 @@ def spawn_name_service(tor, name):
 
     return proto
 
+
 class _Attacher(object):
     def __init__(self, tor):
         self._tor = tor
@@ -137,14 +139,17 @@ class _Attacher(object):
         print("attach_stream {}".format(stream))
 
         # Not all stream events need to be attached.
-        # TODO: check with Tor Project whether NEW and NEWRESOLVE are the correct list.
-        if stream.status not in [stem.StreamStatus.NEW, stem.StreamStatus.NEWRESOLVE]:
+        # TODO: check with Tor Project whether NEW and NEWRESOLVE are the
+        # correct list.
+        if stream.status not in [stem.StreamStatus.NEW,
+                                 stem.StreamStatus.NEWRESOLVE]:
             return
 
         try:
             srv = self.maybe_launch_service(stream.target_address)
         except Exception:
-            print("Unable to launch service for '{}'".format(stream.target_address))
+            print("Unable to launch service for '{}'".format(
+                stream.target_address))
             try:
                 self._tor.attach_stream(stream.id, 0)
             except stem.UnsatisfiableRequest:
@@ -158,7 +163,7 @@ def main():
     while True:
         try:
             # open main controller
-            controller = Controller.from_port(port = tor_control_port)
+            controller = Controller.from_port(port=tor_control_port)
             break
         except stem.SocketError:
             time.sleep(0.005)
@@ -168,7 +173,8 @@ def main():
     print("[notice] Successfully connected to the Tor control port.")
 
     if controller.get_conf('__LeaveStreamsUnattached') != '1':
-        sys.exit('[err] torrc is unsafe for name lookups.  Try adding the line "__LeaveStreamsUnattached 1" to torrc-defaults')
+        sys.exit('[err] torrc is unsafe for name lookups.  Try adding the \
+            line "__LeaveStreamsUnattached 1" to torrc-defaults')
 
     attacher = _Attacher(controller)
 
@@ -177,12 +183,14 @@ def main():
     print('[debug] Now monitoring stream connections.')
 
     try:
-        # Sleeping for 365 days, as upstream OnioNS does, appears to be incompatible with Windows.
-        # Therefore, we instead sleep for 1 day inside an infinite loop.
+        # Sleeping for 365 days, as upstream OnioNS does, appears to be
+        # incompatible with Windows.  Therefore, we instead sleep for 1 day
+        # inside an infinite loop.
         while True:
-            time.sleep(60 * 60 * 24 * 1) #basically, wait indefinitely
+            time.sleep(60 * 60 * 24 * 1)  # basically, wait indefinitely
     except KeyboardInterrupt:
         print('')
 
+
 if __name__ == '__main__':
-  main()
+    main()
