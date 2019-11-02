@@ -55,6 +55,10 @@ class _TorNameServiceProtocol(object):
         for line in self._process.stdout:
             self.lineReceived(line)
 
+    def watch_stderr(self):
+        for line in self._process.stderr:
+            print(line)
+
     def lineReceived(self, line):
         args = line.split()
         if args[0] == 'RESOLVED':
@@ -109,8 +113,11 @@ def spawn_name_service(tor, name):
 
     proto = _TorNameServiceProtocol(tor, process)
 
-    t = Thread(target=proto.watch_stdout)
-    t.start()
+    tout = Thread(target=proto.watch_stdout)
+    tout.start()
+
+    terr = Thread(target=proto.watch_stderr)
+    terr.start()
 
     return proto
 
