@@ -14,6 +14,7 @@
 # txtorcon documentation.
 
 import os
+import secrets
 import subprocess
 import sys
 import time
@@ -88,10 +89,13 @@ class _TorNameServiceProtocol(object):
                 self._tor.close_stream(stream_id,
                                        stem.RelayEndReason.RESOLVEFAILED)
 
-    def request_lookup(self, stream_id, name):
+    def request_lookup(self, stream_id, name, stream_isolation_id):
         query_id = next(self._id_gen)
         self._queries[query_id] = stream_id
-        self._process.stdin.write('RESOLVE {} {}\n'.format(query_id, name))
+        self._process.stdin.write('RESOLVE {} {} {}\n'.format(
+            query_id,
+            name,
+            stream_isolation_id))
 
 
 def spawn_name_service(tor, name):
@@ -126,6 +130,10 @@ class _Attacher(object):
     def __init__(self, tor):
         self._tor = tor
         self._services = {}
+        self._circuits = []
+        self._current_nym_epoch = None
+        self._stream_isolation_count = 0
+        self._stream_isolation_prefix = secrets.token_hex()
 
     def maybe_launch_service(self, name):
         suffix = None
@@ -141,6 +149,83 @@ class _Attacher(object):
             srv = spawn_name_service(self._tor, suffix)
             self._services[suffix] = srv
         return srv
+
+    def stream_compatible(self, circuit_stream, new_stream):
+        iso_fields_missing_message = "WARNING: Isolation fields are missing; \
+stream isolation won't work properly.  Maybe you have an outdated Tor daemon?"
+
+        # Extract list of isolated fields
+        try:
+            circuit_iso_fields = circuit_stream["ISO_FIELDS"]
+        except KeyError:
+            print(iso_fields_missing_message)
+            circuit_iso_fields = ""
+        try:
+            new_iso_fields = new_stream["ISO_FIELDS"]
+        except KeyError:
+            print(iso_fields_missing_message)
+            new_iso_fields = ""
+
+        circuit_iso_fields = circuit_iso_fields.split(",")
+        new_iso_fields = new_iso_fields.split(",")
+
+        iso_fields = set(circuit_iso_fields)
+        iso_fields.update(set(new_iso_fields))
+
+        # If all of the isolated fields are equal, then the streams are
+        # compatible.
+        for field in iso_fields:
+            try:
+                circuit_field = circuit_stream[field]
+            except KeyError:
+                circuit_field = None
+            try:
+                new_field = new_stream[field]
+            except KeyError:
+                new_field = None
+
+            if new_field != circuit_field:
+                return False
+
+        return True
+
+    def circuit_compatible(self, circuit_streams, new_stream):
+        # A circuit is compatible with a new stream if all of its existing
+        # streams are compatible with the new stream.
+        for circuit_stream in circuit_streams:
+            if not self.stream_compatible(circuit_stream, new_stream):
+                return False
+        return True
+
+    def get_stream_isolation_id(self, keyword_args):
+        # Extract the nym epoch
+        try:
+            nym_epoch = keyword_args["NYM_EPOCH"]
+        except KeyError:
+            print("WARNING: Nym epoch is missing; stream isolation won't be \
+cleared.  Maybe you have an outdated Tor daemon?")
+            nym_epoch = 1
+
+        # If the nym epoch has changed, then we can clear the history
+        if nym_epoch != self._current_nym_epoch:
+            self._current_nym_epoch = nym_epoch
+            self._circuits = []
+            print("New nym epoch; cleared history.")
+
+        # Look for compatible existing circuits
+        for circuit in self._circuits:
+            if self.circuit_compatible(circuit["streams"], keyword_args):
+                return circuit["id"]
+
+        # No compatible existing circuit exists; create a new one
+        self._stream_isolation_count += 1
+        circuit = {
+            "id": self._stream_isolation_count,
+            "streams": [keyword_args],
+        }
+        self._circuits.append(circuit)
+        print("Assigning clean circuit.")
+        return circuit["id"]
 
     def attach_stream(self, stream):
         print("attach_stream {}".format(stream))
@@ -163,7 +248,20 @@ class _Attacher(object):
                 pass
             return
 
-        srv.request_lookup(stream.id, stream.target_address)
+        # Apply the special-case grandfathered stream-isolation args
+        keyword_args = stream.keyword_args
+        keyword_args["CLIENTADDR"] = stream.source_address
+        keyword_args["CLIENTPORT"] = stream.source_port
+        keyword_args["DESTADDR"] = stream.target_address
+        keyword_args["DESTPORT"] = stream.target_port
+
+        # Figure out which stream isolation ID to pass to the naming plugin
+        stream_isolation_id = self.get_stream_isolation_id(keyword_args)
+
+        srv.request_lookup(stream.id,
+                           stream.target_address,
+                           self._stream_isolation_prefix + "-" +
+                           str(stream_isolation_id))
 
 
 def main():
@@ -181,7 +279,7 @@ def main():
 
     if controller.get_conf('__LeaveStreamsUnattached') != '1':
         sys.exit('[err] torrc is unsafe for name lookups.  Try adding the \
-            line "__LeaveStreamsUnattached 1" to torrc-defaults')
+line "__LeaveStreamsUnattached 1" to torrc-defaults')
 
     attacher = _Attacher(controller)
 
