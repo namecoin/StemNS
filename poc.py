@@ -48,6 +48,9 @@ class _TorNameServiceProtocol(object):
 
     def __init__(self, tor, process):
         self._queries = dict()
+        self._names = dict()
+        self._stream_isolation_ids = dict()
+        self._timeout = dict()
         self._id_gen = itertools.count(1)
         self._tor = tor
         self._process = process
@@ -69,9 +72,22 @@ class _TorNameServiceProtocol(object):
             query_id = int(query_id)
             status = int(status)
 
+            # GenericFail, Timeout
+            if status in [1, 4] and self._timeout[query_id] > time.time():
+                # Wait 1 second and retry
+                time.sleep(1.0)
+                self._process.stdin.write('RESOLVE {} {} {}\n'.format(
+                    query_id,
+                    self._names[query_id],
+                    self._stream_isolation_ids[query_id]))
+                return
+
             try:
                 stream_id = self._queries[query_id]
                 del self._queries[query_id]
+                del self._names[query_id]
+                del self._stream_isolation_ids[query_id]
+                del self._timeout[query_id]
             except KeyError:
                 print("No query {}: {}".format(query_id, self._queries.keys()))
 
@@ -92,6 +108,9 @@ class _TorNameServiceProtocol(object):
     def request_lookup(self, stream_id, name, stream_isolation_id):
         query_id = next(self._id_gen)
         self._queries[query_id] = stream_id
+        self._names[query_id] = name
+        self._stream_isolation_ids[query_id] = stream_isolation_id
+        self._timeout[query_id] = time.time() + 60
         self._process.stdin.write('RESOLVE {} {} {}\n'.format(
             query_id,
             name,
