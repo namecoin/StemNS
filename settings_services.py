@@ -11,3 +11,7 @@ _service_to_command = {
         join(split(__file__)[0], 'ns_always_txtorcon.py'),
     ],
 }
+
+
+def _bootstrap_callback():
+    pass
