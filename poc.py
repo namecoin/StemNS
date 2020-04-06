@@ -25,8 +25,9 @@ from threading import Thread
 
 import stem
 from stem.control import EventType, Controller
+from stem.response import ControlLine
 
-from settings_services import _service_to_command
+from settings_services import _service_to_command, _bootstrap_callback
 from settings_port import tor_control_port
 
 
@@ -283,6 +284,31 @@ cleared.  Maybe you have an outdated Tor daemon?")
                            str(stream_isolation_id))
 
 
+def bootstrap_initial(info):
+    status = ControlLine(info)
+    while not status.is_empty():
+        if status.is_next_mapping():
+            k, v = status.pop_mapping(quoted=status.is_next_quoted())
+            if k == "PROGRESS":
+                progress = v
+                print(f"[debug] Bootstrap initial progress {progress}%")
+                if int(progress) == 100:
+                    print("Bootstrap complete, running callback...")
+                    _bootstrap_callback()
+        else:
+            status.pop(quoted=status.is_next_quoted())
+
+
+def bootstrap(status):
+    if status.action == "BOOTSTRAP":
+        progress = status.arguments["PROGRESS"]
+        print(f"[debug] Bootstrap progress {progress}%")
+
+        if int(progress) == 100:
+            print("Bootstrap complete, running callback...")
+            _bootstrap_callback()
+
+
 def main():
     while True:
         try:
@@ -303,8 +329,11 @@ line "__LeaveStreamsUnattached 1" to torrc-defaults')
     attacher = _Attacher(controller)
 
     controller.add_event_listener(attacher.attach_stream, EventType.STREAM)
-
     print('[debug] Now monitoring stream connections.')
+
+    controller.add_event_listener(bootstrap, EventType.STATUS_CLIENT)
+    bootstrap_initial(controller.get_info("status/bootstrap-phase"))
+    print('[debug] Now monitoring boostrap.')
 
     try:
         # Sleeping for 365 days, as upstream OnioNS does, appears to be
