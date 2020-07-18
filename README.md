@@ -7,28 +7,47 @@ layer api") so that actual naming plugins can be tested/prototyped
 
 StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by meejah, which is modified to use Stem instead of txtorcon.
 
-# Using This
+# Configuration and usage
 
-It will currently connect to a system tor on localhost:9051 or you can
-change this to 9151 (in poc.py) to react a Tor Browser Bundle
+It will currently connect to a system Tor daemon on `localhost:9051` or you can
+change the port to `9151` in `settings_port.py` to react a Tor Browser Bundle
 instance.
 
 Tor must be configured with the following option before launching StemNS:
 
-~~~
+```
 __LeaveStreamsUnattached 1
-~~~
+```
 
-If it's not, StemNS will exit with an error.  In a typical Tor Browser installation, `torrc-defaults` is the correct place to add this option.  The choice to not make StemNS configure this option itself is deliberate; making StemNS configure the option itself would leave a short window during initial connect where name resolution is incorrectly forwarded to the exit relay, which would be a security issue.
+In a typical Tor Browser installation, `torrc-defaults` is the correct place to
+add this option.  For Tor daemon installed in the system, the option can be added
+to `/etc/tor/torrc`.
 
-This actually works and launches two example services, reached via:
-<something>.<service>.onion where the two services are .pet.onion for
-the ns_petname.py lookup (so try, e.g., "http://scihub.pet.onion" in
-TBB).
+If the flag is not enabled, StemNS will exit with an error.
 
-The other one is .demo.onion and will always remap to txtorcon's
-documentation hidden-service. So <anything>.demo.onion will redirect
-you to txtorcon's documentation.
+Once the flag is enabled, the ***StemNS daemon must be running for Tor to
+work***.  The reason is that by default, with the flag disabled, Tor
+automatically attaches streams to circuits, but with the flag enabled, Tor
+instead waits for the controller (StemNS in this case) to attach them. StemNS
+does a REDIRECTSTREAM command on each .bit stream prior to attaching it to a
+circuit; this command is how it redirects .bit to .onion.
+
+The choice to not make StemNS configure this option itself is deliberate;
+making StemNS configure the option itself would leave a short window during
+initial connect where name resolution is incorrectly forwarded to the exit
+relay, which would be a security issue.
+
+# Name resolution services
+
+By default StemNS daemon is configured with two example name resolution
+services, invoked for resolving `<something>.<service>.onion`:
+* `.pet.onion` implemented in `ns_petname.py` resolves a predefined set
+of names (try, e.g., "http://txtorcon.pet.onion" in TBB).
+* `.demo.onion` always remap to txtorcon's documentation hidden-service. So
+  `<anything>.demo.onion` will redirect you to txtorcon's documentation.
+
+You can implement custom services and add them to the map in
+`settings_services.py`.
 
 # Naming Implementations
 
