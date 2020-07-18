@@ -1,5 +1,5 @@
 # this is a Tor Proposition 279-compliant name resolution provider
-# that sends any .onion request to txtorcon's documentation site.
+# that resolves a predefined set of .pet.onion domains.
 
 import sys
 
@@ -17,7 +17,7 @@ while True:
     args = line.split()
 
     if args[0] == 'RESOLVE':
-        query_id, nm = args[1:]
+        query_id, nm, _ = args[1:]
         try:
             new_name = pet_names[nm]
             print('RESOLVED {} 0 {}'.format(query_id, new_name))
