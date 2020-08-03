@@ -27,7 +27,8 @@ import stem
 from stem.control import EventType, Controller
 from stem.response import ControlLine
 
-from settings_services import _service_to_command, _bootstrap_callback
+from settings_services import _service_to_command
+from settings_services import _bootstrap_callback, _exit_callback
 from settings_port import tor_control_port
 
 
@@ -314,6 +315,17 @@ def bootstrap(status):
             _bootstrap_callback()
 
 
+def socket_state_initial(alive):
+    if not alive:
+        print("Tor daemon exited; exiting StemNS...")
+        _exit_callback()
+
+
+def socket_state(controller, state, timestamp):
+    if state == stem.control.State.CLOSED:
+        socket_state_initial(False)
+
+
 def main():
     while True:
         try:
@@ -339,6 +351,10 @@ line "__LeaveStreamsUnattached 1" to torrc-defaults')
     controller.add_event_listener(bootstrap, EventType.STATUS_CLIENT)
     bootstrap_initial(controller.get_info("status/bootstrap-phase"))
     print('[debug] Now monitoring boostrap.')
+
+    controller.add_status_listener(socket_state)
+    socket_state_initial(controller.is_alive())
+    print('[debug] Now monitoring shutdown.')
 
     try:
         # Sleeping for 365 days, as upstream OnioNS does, appears to be
