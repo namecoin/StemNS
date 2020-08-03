@@ -250,11 +250,16 @@ cleared.  Maybe you have an outdated Tor daemon?")
     def attach_stream(self, stream):
         print("attach_stream {}".format(stream))
 
-        # Not all stream events need to be attached.
-        # TODO: check with Tor Project whether NEW and NEWRESOLVE are the
-        # correct list.
+        # Don't attach streams if their status indicates that they were already
+        # attached.
         if stream.status not in [stem.StreamStatus.NEW,
                                  stem.StreamStatus.NEWRESOLVE]:
+            return
+
+        # Don't attach streams if their purpose indicates that they will be
+        # automatically attached.
+        if stream.purpose not in [stem.StreamPurpose.DNS_REQUEST,
+                                  stem.StreamPurpose.USER]:
             return
 
         try:
