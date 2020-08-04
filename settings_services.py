@@ -1,5 +1,6 @@
-import sys
+import os
 from os.path import join, split
+import sys
 
 _service_to_command = {
     "pet.onion": [
@@ -15,3 +16,8 @@ _service_to_command = {
 
 def _bootstrap_callback():
     pass
+
+
+def _exit_callback():
+    # Can't use sys.exit() here because it's called from a child thread.
+    os._exit(0)
