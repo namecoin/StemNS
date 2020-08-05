@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # note: this needs stem to run. you can
 # install it in a fresh virtualenv on Debian (after "apt-get install
 # python-virtualenv") like so:
