@@ -253,16 +253,8 @@ cleared.  Maybe you have an outdated Tor daemon?")
     def attach_stream(self, stream):
         print("attach_stream {}".format(stream))
 
-        # Don't attach streams if their status indicates that they were already
-        # attached.
-        if stream.status not in [stem.StreamStatus.NEW,
-                                 stem.StreamStatus.NEWRESOLVE]:
-            return
-
-        # Don't attach streams if their purpose indicates that they will be
-        # automatically attached.
-        if stream.purpose not in [stem.StreamPurpose.DNS_REQUEST,
-                                  stem.StreamPurpose.USER]:
+        # Only attach streams that are waiting for us to attach them.
+        if stream.status != stem.StreamStatus.CONTROLLER_WAIT:
             return
 
         try:
