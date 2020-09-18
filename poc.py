@@ -253,12 +253,12 @@ cleared.  Maybe you have an outdated Tor daemon?")
         self._circuits.append(circuit)
 
         # Uncomment for verbose logging of stream isolation
-        #print("Assigning clean circuit.")
+        # print("Assigning clean circuit.")
         return circuit["id"]
 
     def attach_stream(self, stream):
         # Uncomment for verbose logging of STREAM events
-        #print("attach_stream {}".format(stream))
+        # print("attach_stream {}".format(stream))
 
         # Only attach streams that are waiting for us to attach them.
         if stream.status != stem.StreamStatus.CONTROLLER_WAIT:
