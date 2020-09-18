@@ -47,6 +47,10 @@ class NameLookupError(Exception):
         super(NameLookupError, self).__init__(msg[status])
 
 
+class NoService(Exception):
+    pass
+
+
 class _TorNameServiceProtocol(object):
     delimiter = '\n'
 
@@ -125,7 +129,7 @@ def spawn_name_service(tor, name):
     try:
         args = _service_to_command[name]
     except KeyError:
-        raise Exception(
+        raise NoService(
             "No such service '{}'".format(name)
         )
     spawn_env = deepcopy(os.environ)
@@ -259,13 +263,20 @@ cleared.  Maybe you have an outdated Tor daemon?")
 
         try:
             srv = self.maybe_launch_service(stream.target_address)
-        except Exception as e:
-            print("Unable to launch service for '{}': {}".format(
-                stream.target_address, str(e)))
+        except NoService:
+            # No service is configured for this address; just pass it through
+            # to Tor unaltered.
             try:
                 self._tor.attach_stream(stream.id, 0)
             except stem.UnsatisfiableRequest:
                 pass
+            return
+        except Exception as e:
+            print("Unable to launch service for '{}': {}".format(
+                stream.target_address, str(e)))
+            # A service is configured for this address, but we failed to launch
+            # it.  Do not try to attach the stream, since we can't do so
+            # safely.
             return
 
         # Apply the special-case grandfathered stream-isolation args
