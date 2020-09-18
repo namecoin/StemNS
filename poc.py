@@ -287,7 +287,9 @@ cleared.  Maybe you have an outdated Tor daemon?")
                 stream.target_address, str(e)))
             # A service is configured for this address, but we failed to launch
             # it.  Do not try to attach the stream, since we can't do so
-            # safely.
+            # safely.  Instead just tell Tor that the resolution failed.
+            self._tor.close_stream(stream.id,
+                                   stem.RelayEndReason.RESOLVEFAILED)
             return
 
         # Apply the special-case grandfathered stream-isolation args
