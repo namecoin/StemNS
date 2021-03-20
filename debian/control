@@ -1,0 +1,20 @@
+Source: electrum-nmc
+Maintainer: Lola Rigaut-Luczak <me@lola.ninja>
+Section: utils
+Priority: optional
+Build-Depends:
+ debhelper (>= 11),
+ devscripts,
+ python3,
+Standards-Version: 4.4.0
+Homepage: https://github.com/namecoin/StemNS
+
+Package: stem-ns
+Architecture: all
+Section: python
+ ${misc:Depends},
+ ${python3:Depends},
+Description: This is an implementation of the "Tor side" of Proposal 279
+ ("naming layer api") so that actual naming plugins can be tested/prototyped "now" without changing Tor.
+ 
+ StemNS is a fork of the original TorNS by meejah, which is modified to use Stem instead of txtorcon.
