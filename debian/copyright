@@ -1,7 +1,7 @@
 Files: *
 Copyright: Meejah
            Namecoin developers
-License: Unlicense
+License: Modified/New BSD License
 Comment: StemNS inherits some code from OnioNS-client,
  which is licensed under the Modified/New BSD License (see LICENSE.OnioNS).
 
