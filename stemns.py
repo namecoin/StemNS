@@ -10,7 +10,7 @@
 # pip install stem
 #
 # Then you can run this:
-# python3 poc.py
+# python3 stemns.py
 #
 # ...and then visit any .onion address, and it'll get re-directed to
 # txtorcon documentation.
