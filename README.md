@@ -61,4 +61,4 @@ You can implement custom services and add them to the map in
 
 Code specific to StemNS, and the code StemNS inherits from TorNS, is licensed under the Unlicense (see `LICENSE`).  StemNS inherits some code from [OnioNS-client](https://github.com/Jesse-V/OnioNS-client), which is licensed under the Modified/New BSD License (see `LICENSE.OnioNS`).
 
-This product is produced independently from the Tor® anonymity software and carries no guarantee from The Tor Project about quality, suitability or anything else.
+StemNS is produced independently from the Tor® anonymity software and carries no guarantee from The Tor Project about quality, suitability or anything else.
