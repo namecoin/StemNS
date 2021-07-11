@@ -9,6 +9,8 @@ StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by mee
 
 # Configuration and usage
 
+Currently only tag `v0.1.1` of StemNS works correctly. This is because of `stem v1.8.0` is not compatible with the current master branch.
+
 It will currently connect to a system Tor daemon on `localhost:9051` or you can
 change the port to `9151` in `settings_port.py` to react a Tor Browser Bundle
 instance.
