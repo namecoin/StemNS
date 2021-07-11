@@ -1,18 +1,18 @@
 
 # Proposal 279
 
-This is an implementation of the "Tor side" of Proposal 279 ("naming
-layer api") so that actual naming plugins can be tested/prototyped
+StemNS is an implementation of the "Tor side" of Proposal 279 ("naming
+layer API") so that actual naming plugins can be tested/prototyped
 "now" without changing Tor.
 
-StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by meejah, which is modified to use Stem instead of txtorcon.
+StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by meejah, which is modified to use Stem instead of txtorcon, with some additional security features added.
 
 # Configuration and usage
 
-Currently only tag `v0.1.1` of StemNS works correctly. This is because of `stem v1.8.0` is not compatible with the current master branch.
+Dependency note: StemNS `master` branch requires Stem v1.9.0 or higher; Stem has not tagged v1.9.0 yet.  This means that to use StemNS right now (until Stem tags v1.9.0), you should either use it with Stem `master` branch, or use the latest v0.1.x tag of StemNS (which works with Stem v1.8.0).
 
-It will currently connect to a system Tor daemon on `localhost:9051` or you can
-change the port to `9151` in `settings_port.py` to react a Tor Browser Bundle
+StemNS will currently connect to a system Tor daemon on `localhost:9051` or you can
+change the port to `9151` in `settings_port.py` to react a Tor Browser
 instance.
 
 Tor must be configured with the following option before launching StemNS:
@@ -44,7 +44,7 @@ relay, which would be a security issue.
 By default StemNS daemon is configured with two example name resolution
 services, invoked for resolving `<something>.<service>.onion`:
 * `.pet.onion` implemented in `ns_petname.py` resolves a predefined set
-of names (try, e.g., "http://txtorcon.pet.onion" in TBB).
+of names (try, e.g., "http://txtorcon.pet.onion" in Tor Browser).
 * `.demo.onion` always remap to txtorcon's documentation hidden-service. So
   `<anything>.demo.onion` will redirect you to txtorcon's documentation.
 
