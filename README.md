@@ -55,6 +55,7 @@ You can implement custom services and add them to the map in
 
  - "banana" does naming based on /etc/hosts: https://github.com/pickfire/banana
  - "dns-prop279" does naming based on DNS `TXT` records: https://github.com/namecoin/dns-prop279
+ - "ncprop279" does naming based on Namecoin: https://github.com/namecoin/ncprop279
 
 # License
 
