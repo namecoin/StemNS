@@ -14,3 +14,22 @@ task:
     - flake8 . --count --select=E,F,W,C90 --show-source --statistics
   env:
     STEMNS_IMAGE: python:3.7
+
+task:
+  name: Missing torrc
+  container:
+    image: fedora:latest
+    cpu: 1
+    memory: 1G
+  install_script:
+    - dnf install -y tor python3-stem
+  tor_background_script:
+    - echo "ControlPort 9051" >> /etc/tor/torrc
+    - echo "CookieAuthentication 1" >> /etc/tor/torrc
+    - tor --runasdaemon 0 --defaults-torrc /usr/share/tor/defaults-torrc -f /etc/tor/torrc
+  stemns_script:
+    - if ./stemns.py &> out.txt
+    - then
+    - exit 1
+    - fi
+    - grep "torrc is unsafe for name lookups" out.txt
