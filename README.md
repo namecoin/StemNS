@@ -7,9 +7,14 @@ layer API") so that actual naming plugins can be tested/prototyped
 
 StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by meejah, which is modified to use Stem instead of txtorcon, with some additional security features added.
 
-# Configuration and usage
+# Dependencies
 
-Dependency note: StemNS `master` branch requires Stem v1.9.0 or higher; Stem has not tagged v1.9.0 yet.  This means that to use StemNS right now (until Stem tags v1.9.0), you should either use it with Stem `master` branch, or use the latest v0.1.x tag of StemNS (which works with Stem v1.8.0).
+* Tor v0.4.5.1 Alpha or higher.
+* Stem v1.9.0 or higher.  Stem has not tagged v1.9.0 yet.  This means that to use StemNS right now (until Stem tags v1.9.0), you should use Stem `master` branch.
+
+If the above dependency versions are out of your reach, you can use the latest v0.1.x tag of StemNS, which has much lower requirements.
+
+# Configuration and usage
 
 StemNS will currently connect to a system Tor daemon on `localhost:9051` or you can
 change the port to `9151` in `settings_port.py` to react a Tor Browser
