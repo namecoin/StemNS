@@ -404,7 +404,7 @@ line "__LeaveStreamsUnattached 1" to torrc-defaults')
 
     controller.add_event_listener(bootstrap, EventType.STATUS_CLIENT)
     bootstrap_initial(controller.get_info("status/bootstrap-phase"))
-    print('[debug] Now monitoring boostrap.')
+    print('[debug] Now monitoring bootstrap.')
 
     controller.add_status_listener(socket_state)
     socket_state_initial(controller.is_alive())
