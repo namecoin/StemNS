@@ -30,8 +30,7 @@ from stem.control import EventType, Controller
 from stem.response import ControlLine
 from stem.version import Version
 
-from settings_services import _service_to_command
-from settings_services import _bootstrap_callback, _exit_callback
+from settings_services import _service_to_command, _bootstrap_callback, _exit_callback
 from settings_port import tor_control_port
 
 
