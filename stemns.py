@@ -16,6 +16,10 @@
 # txtorcon documentation.
 
 import os
+import warnings
+import importlib
+from functools import reduce
+from pathlib import Path
 import secrets
 import subprocess
 import sys
@@ -29,9 +33,43 @@ import stem
 from stem.control import EventType, Controller
 from stem.response import ControlLine
 
-from settings_services import _service_to_command, _bootstrap_callback, _exit_callback
-from settings_port import tor_control_port
 
+def load_config_from_dir(searchdir, attrs):
+    root = Path(__file__).parent / searchdir
+    filenames = sorted(os.listdir(root))
+    modules = [import_without_bind(root / fn) for fn in filenames]
+    for attr, mt in attrs.items():
+        # Special logic to merge config files together
+        possible = [m.get(attr) for m in modules]
+        stack = [c for c in possible if c is not None]
+        if (mt == 'shadow'):
+            if len(stack) == 0:
+                raise ValueError(f"config option {attr} in {root} is not set")
+            globals()[attr] = stack[-1]
+            if len(stack) > 1:
+                offending = {k: v for k, v in zip(filenames, possible) if v is not None}.keys()
+                warnings.warn(f"config option {attr} set multiple times ({', '.join(offending)}), the last file in the list will be used")
+        elif (mt == 'call'):
+            globals()[attr] = lambda cbs=stack: [f() for f in cbs]
+            # Call all callbacks sequentially
+        elif (mt == 'merge'):
+            overlaps = reduce(lambda a, b: [a[0] | set(b.keys()), (a[0] & set(b.keys())) | a[1]], stack, [set(), set()])[1]
+            offending = {k: v for k, v in zip(filenames, possible) if (v is not None and set(v.keys()) & overlaps)}.keys()
+            # Get all options that would shadow one another
+            n = len(overlaps)
+            if n > 0:
+                warnings.warn(f"following item{'' if n==1 else 's'} of {attr} set multiple times: {', '.join(overlaps)} (in {', '.join(offending)})")
+
+            globals()[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
+
+def import_without_bind(filename):
+    # Import a module, get a dict
+    spec = importlib.util.spec_from_file_location('config', filename)
+    if spec is None:
+        return {} # Not a module
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__dict__
 
 class NameLookupError(Exception):
     def __init__(self, status):
@@ -336,6 +374,13 @@ def socket_state(controller, state, timestamp):
 
 
 def main():
+    load_config_from_dir("config", {
+        'tor_control_port': 'shadow',
+        '_service_to_command': 'merge',
+        '_bootstrap_callback': 'call',
+        '_exit_callback': 'call'
+        })
+
     while True:
         try:
             # open main controller
