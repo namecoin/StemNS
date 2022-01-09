@@ -28,6 +28,7 @@ from threading import Thread
 import stem
 from stem.control import EventType, Controller
 from stem.response import ControlLine
+from stem.version import Version
 
 from settings_services import _service_to_command
 from settings_services import _bootstrap_callback, _exit_callback
@@ -161,6 +162,9 @@ class _Attacher(object):
         self._current_nym_epoch = None
         self._stream_isolation_count = 0
         self._stream_isolation_prefix = secrets.token_hex()
+        self._tor_version = self._tor.get_version()
+        self._tor_supports_controller_wait = (self._tor_version
+                                              >= Version("0.4.5.1"))
 
     def maybe_launch_service(self, name):
         suffix = None
@@ -261,8 +265,33 @@ cleared.  Maybe you have an outdated Tor daemon?")
         # print("attach_stream {}".format(stream))
 
         # Only attach streams that are waiting for us to attach them.
-        if stream.status != stem.StreamStatus.CONTROLLER_WAIT:
-            return
+        if self._tor_supports_controller_wait:
+            # Tor is recent enough to do this the right way.
+
+            try:
+                # Stem 1.9.0 and higher
+                if stream.status != stem.StreamStatus.CONTROLLER_WAIT:
+                    return
+            except AttributeError:
+                # Stem 1.8.0 and earlier
+                if stream.status != "CONTROLLER_WAIT":
+                    return
+        else:
+            # Tor is too old to do this the right way; we'll work around it by
+            # rolling our own simulation of __LeaveStreamsUnattached.  This may
+            # have bugs but it usually works.
+
+            # Don't attach streams if their status indicates that they were
+            # already attached.
+            if stream.status not in [stem.StreamStatus.NEW,
+                                     stem.StreamStatus.NEWRESOLVE]:
+                return
+
+            # Don't attach streams if their purpose indicates that they will be
+            # automatically attached.
+            if stream.purpose not in [stem.StreamPurpose.DNS_REQUEST,
+                                      stem.StreamPurpose.USER]:
+                return
 
         try:
             srv = self.maybe_launch_service(stream.target_address)
