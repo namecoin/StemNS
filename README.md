@@ -9,10 +9,8 @@ StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by mee
 
 # Dependencies
 
-* Tor v0.4.5.1 Alpha or higher.
-* Stem v1.9.0 or higher.  Stem has not tagged v1.9.0 yet.  This means that to use StemNS right now (until Stem tags v1.9.0), you should use Stem `master` branch.
-
-If the above dependency versions are out of your reach, you can use the latest v0.1.x tag of StemNS, which has much lower requirements.
+* Tor v0.4.5.1 Alpha or higher is preferred; older versions should still work.
+* Stem v1.9.0 or higher is preferred; older versions should still work.
 
 # Configuration and usage
 
