@@ -49,6 +49,9 @@ task:
     - tor --runasdaemon 0 --defaults-torrc /usr/share/tor/defaults-torrc -f /etc/tor/torrc
   stemns_background_script:
     - ./stemns.py
-  curl_script:
+  curl_control_script:
+    - sleep 10s # Wait for Tor to connect
+    - torsocks curl http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion/
+  curl_petname_script:
     - sleep 10s # Wait for Tor to connect
     - torsocks curl http://duckduckgo.pet.onion/
