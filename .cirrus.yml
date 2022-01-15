@@ -50,4 +50,5 @@ task:
   stemns_background_script:
     - ./stemns.py
   curl_script:
+    - sleep 10s # Wait for Tor to connect
     - torsocks curl http://duckduckgo.pet.onion/
