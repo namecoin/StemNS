@@ -1,0 +1,16 @@
+task:
+  name: Flake8
+  container:
+    image: $STEMNS_IMAGE
+    cpu: 1
+    memory: 1G
+  pip_cache:
+    folder: ~/.cache/pip
+    fingerprint_script: echo Flake8 && echo $STEMNS_IMAGE
+    populate_script: mkdir -p ~/.cache/pip
+  install_script:
+    - pip install flake8
+  flake8_script:
+    - flake8 . --count --select=E,F,W,C90 --show-source --statistics
+  env:
+    STEMNS_IMAGE: python:3.7
