@@ -305,8 +305,8 @@ cleared.  Maybe you have an outdated Tor daemon?", file=sys.stderr)
                 pass
             return
         except Exception as e:
-            print("Unable to launch service for '{}': {}".format(
-                stream.target_address, str(e)), file=sys.stderr)
+            print("Unable to launch service: {}".format(
+                str(e)), file=sys.stderr)
             # A service is configured for this address, but we failed to launch
             # it.  Do not try to attach the stream, since we can't do so
             # safely.  Instead just tell Tor that the resolution failed.
