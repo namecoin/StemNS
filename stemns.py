@@ -70,7 +70,7 @@ class _TorNameServiceProtocol(object):
 
     def watch_stderr(self):
         for line in self._process.stderr:
-            print(line)
+            print(line, file=sys.stderr)
 
     def lineReceived(self, line):
         args = line.split()
@@ -98,7 +98,8 @@ class _TorNameServiceProtocol(object):
                 del self._stream_isolation_ids[query_id]
                 del self._timeout[query_id]
             except KeyError:
-                print("No query {}: {}".format(query_id, self._queries.keys()))
+                print("No query {}: {}".format(query_id, self._queries.keys()),
+                      file=sys.stderr)
 
             if status == 0:
                 # Answer should be a domain name or IP address, neither of
@@ -189,12 +190,12 @@ stream isolation won't work properly.  Maybe you have an outdated Tor daemon?"
         try:
             circuit_iso_fields = circuit_stream["ISO_FIELDS"]
         except KeyError:
-            print(iso_fields_missing_message)
+            print(iso_fields_missing_message, file=sys.stderr)
             circuit_iso_fields = ""
         try:
             new_iso_fields = new_stream["ISO_FIELDS"]
         except KeyError:
-            print(iso_fields_missing_message)
+            print(iso_fields_missing_message, file=sys.stderr)
             new_iso_fields = ""
 
         circuit_iso_fields = circuit_iso_fields.split(",")
@@ -234,7 +235,7 @@ stream isolation won't work properly.  Maybe you have an outdated Tor daemon?"
             nym_epoch = keyword_args["NYM_EPOCH"]
         except KeyError:
             print("WARNING: Nym epoch is missing; stream isolation won't be \
-cleared.  Maybe you have an outdated Tor daemon?")
+cleared.  Maybe you have an outdated Tor daemon?", file=sys.stderr)
             nym_epoch = 1
 
         # If the nym epoch has changed, then we can clear the history
@@ -305,7 +306,7 @@ cleared.  Maybe you have an outdated Tor daemon?")
             return
         except Exception as e:
             print("Unable to launch service for '{}': {}".format(
-                stream.target_address, str(e)))
+                stream.target_address, str(e)), file=sys.stderr)
             # A service is configured for this address, but we failed to launch
             # it.  Do not try to attach the stream, since we can't do so
             # safely.  Instead just tell Tor that the resolution failed.
