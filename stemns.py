@@ -68,7 +68,7 @@ def import_without_bind(filename):
     # Import a module, get a dict
     spec = importlib.util.spec_from_file_location('config', filename)
     if spec is None:
-        return {} # Not a module
+        return {}  # Not a module
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.__dict__
