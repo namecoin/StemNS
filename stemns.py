@@ -34,11 +34,17 @@ from stem.control import EventType, Controller
 from stem.response import ControlLine
 from stem.version import Version
 
+tor_control_port = None
+_service_to_command = None
+_bootstrap_callback = None
+_exit_callback = None
+
 
 def load_config_from_dir(searchdir, attrs):
     root = Path(__file__).parent / searchdir
     filenames = sorted(os.listdir(root))
     modules = [import_without_bind(root / fn) for fn in filenames]
+    config = {}
     for attr, mt in attrs.items():
         # Special logic to merge config files together
         possible = [m.get(attr) for m in modules]
@@ -46,12 +52,12 @@ def load_config_from_dir(searchdir, attrs):
         if (mt == 'shadow'):
             if len(stack) == 0:
                 raise ValueError(f"config option {attr} in {root} is not set")
-            globals()[attr] = stack[-1]
+            config[attr] = stack[-1]
             if len(stack) > 1:
                 offending = {k: v for k, v in zip(filenames, possible) if v is not None}.keys()
                 warnings.warn(f"config option {attr} set multiple times ({', '.join(offending)}), the last file in the list will be used")
         elif (mt == 'call'):
-            globals()[attr] = lambda cbs=stack: [f() for f in cbs]
+            config[attr] = lambda cbs=stack: [f() for f in cbs]
             # Call all callbacks sequentially
         elif (mt == 'merge'):
             overlaps = reduce(lambda a, b: [a[0] | set(b.keys()), (a[0] & set(b.keys())) | a[1]], stack, [set(), set()])[1]
@@ -61,7 +67,8 @@ def load_config_from_dir(searchdir, attrs):
             if n > 0:
                 warnings.warn(f"following item{'' if n==1 else 's'} of {attr} set multiple times: {', '.join(overlaps)} (in {', '.join(offending)})")
 
-            globals()[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
+            config[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
+    return config
 
 
 def import_without_bind(filename):
@@ -406,12 +413,22 @@ def socket_state(controller, state, timestamp):
 
 
 def main():
-    load_config_from_dir("config", {
+    config = load_config_from_dir("config", {
         'tor_control_port': 'shadow',
         '_service_to_command': 'merge',
         '_bootstrap_callback': 'call',
         '_exit_callback': 'call'
         })
+
+    global tor_control_port
+    global _service_to_command
+    global _bootstrap_callback
+    global _exit_callback
+
+    tor_control_port = config['tor_control_port']
+    _service_to_command = config['_service_to_command']
+    _bootstrap_callback = config['_bootstrap_callback']
+    _exit_callback = config['_exit_callback']
 
     while True:
         try:
