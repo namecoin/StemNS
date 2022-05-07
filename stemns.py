@@ -54,18 +54,28 @@ def load_config_from_dir(searchdir, attrs):
                 raise ValueError(f"config option {attr} in {root} is not set")
             config[attr] = stack[-1]
             if len(stack) > 1:
-                offending = {k: v for k, v in zip(filenames, possible) if v is not None}.keys()
-                warnings.warn(f"config option {attr} set multiple times ({', '.join(offending)}), the last file in the list will be used")
+                offending = {k: v for k, v in zip(filenames, possible)
+                             if v is not None}.keys()
+                warnings.warn(f"config option {attr} set multiple times "
+                              f"({', '.join(offending)}), the last file in "
+                              f"the list will be used")
         elif (mt == 'call'):
             config[attr] = lambda cbs=stack: [f() for f in cbs]
             # Call all callbacks sequentially
         elif (mt == 'merge'):
-            overlaps = reduce(lambda a, b: [a[0] | set(b.keys()), (a[0] & set(b.keys())) | a[1]], stack, [set(), set()])[1]
-            offending = {k: v for k, v in zip(filenames, possible) if (v is not None and set(v.keys()) & overlaps)}.keys()
+            overlaps = reduce(lambda a, b:
+                              [a[0] | set(b.keys()),
+                               (a[0] & set(b.keys())) | a[1]],
+                              stack, [set(), set()])[1]
+            offending = {k: v for k, v in zip(filenames, possible)
+                         if (v is not None and set(v.keys()) & overlaps)
+                         }.keys()
             # Get all options that would shadow one another
             n = len(overlaps)
             if n > 0:
-                warnings.warn(f"following item{'' if n==1 else 's'} of {attr} set multiple times: {', '.join(overlaps)} (in {', '.join(offending)})")
+                warnings.warn(f"following item{'' if n==1 else 's'} of {attr} "
+                              f"set multiple times: {', '.join(overlaps)} "
+                              f"(in {', '.join(offending)})")
 
             config[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
     return config
