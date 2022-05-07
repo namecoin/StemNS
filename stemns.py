@@ -17,7 +17,7 @@
 
 import os
 import warnings
-import importlib
+import importlib.util
 from functools import reduce
 from pathlib import Path
 import secrets
