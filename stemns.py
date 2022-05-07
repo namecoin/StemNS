@@ -63,6 +63,7 @@ def load_config_from_dir(searchdir, attrs):
 
             globals()[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
 
+
 def import_without_bind(filename):
     # Import a module, get a dict
     spec = importlib.util.spec_from_file_location('config', filename)
@@ -71,6 +72,7 @@ def import_without_bind(filename):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.__dict__
+
 
 class NameLookupError(Exception):
     def __init__(self, status):
