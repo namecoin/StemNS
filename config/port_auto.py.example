@@ -1,0 +1,22 @@
+from urllib.parse import urlparse
+
+
+def tor_control_port():
+    try:
+        with open(filename, 'r') as file:
+            for line in file:
+                if line.startswith('PORT='):
+                    ipport = line.split('=')[1]
+
+                    parsed = urlparse('//'+ipport)
+                    ip = parsed.hostname
+                    port = parsed.port
+
+                    return port
+    except OSError:
+        pass
+
+    return None
+
+
+filename = '/var/lib/tor/controlport'
