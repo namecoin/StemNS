@@ -16,6 +16,10 @@
 # txtorcon documentation.
 
 import os
+import warnings
+import importlib.util
+from functools import reduce
+from pathlib import Path
 import secrets
 import subprocess
 import sys
@@ -30,9 +34,61 @@ from stem.control import EventType, Controller
 from stem.response import ControlLine
 from stem.version import Version
 
-from settings_services import _service_to_command
-from settings_services import _bootstrap_callback, _exit_callback
-from settings_port import tor_control_port
+tor_control_port = None
+_service_to_command = None
+_bootstrap_callback = None
+_exit_callback = None
+
+
+def load_config_from_dir(searchdir, attrs):
+    root = Path(__file__).parent / searchdir
+    filenames = sorted(os.listdir(root))
+    modules = [import_without_bind(root / fn) for fn in filenames]
+    config = {}
+    for attr, mt in attrs.items():
+        # Special logic to merge config files together
+        possible = [m.get(attr) for m in modules]
+        stack = [c for c in possible if c is not None]
+        if (mt == 'shadow'):
+            if len(stack) == 0:
+                raise ValueError(f"config option {attr} in {root} is not set")
+            config[attr] = stack[-1]
+            if len(stack) > 1:
+                offending = {k: v for k, v in zip(filenames, possible)
+                             if v is not None}.keys()
+                warnings.warn(f"config option {attr} set multiple times "
+                              f"({', '.join(offending)}), the last file in "
+                              f"the list will be used")
+        elif (mt == 'call'):
+            config[attr] = lambda cbs=stack: [f() for f in cbs]
+            # Call all callbacks sequentially
+        elif (mt == 'merge'):
+            overlaps = reduce(lambda a, b:
+                              [a[0] | set(b.keys()),
+                               (a[0] & set(b.keys())) | a[1]],
+                              stack, [set(), set()])[1]
+            offending = {k: v for k, v in zip(filenames, possible)
+                         if (v is not None and set(v.keys()) & overlaps)
+                         }.keys()
+            # Get all options that would shadow one another
+            n = len(overlaps)
+            if n > 0:
+                warnings.warn(f"following item{'' if n==1 else 's'} of {attr} "
+                              f"set multiple times: {', '.join(overlaps)} "
+                              f"(in {', '.join(offending)})")
+
+            config[attr] = reduce(lambda a, b: {**a, **b}, stack, {})
+    return config
+
+
+def import_without_bind(filename):
+    # Import a module, get a dict
+    spec = importlib.util.spec_from_file_location('config', filename)
+    if spec is None:
+        return {}  # Not a module
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__dict__
 
 
 class NameLookupError(Exception):
@@ -367,6 +423,23 @@ def socket_state(controller, state, timestamp):
 
 
 def main():
+    config = load_config_from_dir("config", {
+        'tor_control_port': 'shadow',
+        '_service_to_command': 'merge',
+        '_bootstrap_callback': 'call',
+        '_exit_callback': 'call'
+        })
+
+    global tor_control_port
+    global _service_to_command
+    global _bootstrap_callback
+    global _exit_callback
+
+    tor_control_port = config['tor_control_port']
+    _service_to_command = config['_service_to_command']
+    _bootstrap_callback = config['_bootstrap_callback']
+    _exit_callback = config['_exit_callback']
+
     while True:
         try:
             # open main controller
@@ -390,7 +463,7 @@ line "__LeaveStreamsUnattached 1" to torrc-defaults')
 
     controller.add_event_listener(bootstrap, EventType.STATUS_CLIENT)
     bootstrap_initial(controller.get_info("status/bootstrap-phase"))
-    print('[debug] Now monitoring boostrap.')
+    print('[debug] Now monitoring bootstrap.')
 
     controller.add_status_listener(socket_state)
     socket_state_initial(controller.is_alive())
