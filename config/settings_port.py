@@ -1,1 +1,2 @@
-tor_control_port = 9051
+def tor_control_port():
+    return 9051

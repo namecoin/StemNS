@@ -443,7 +443,7 @@ def main():
     while True:
         try:
             # open main controller
-            controller = Controller.from_port(port=tor_control_port)
+            controller = Controller.from_port(port=tor_control_port())
             break
         except stem.SocketError:
             time.sleep(0.005)
