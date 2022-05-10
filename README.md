@@ -22,12 +22,10 @@ StemNS loads configuration from the `config` directory.  Example configurations 
     * These are callbacks that run when Tor disconnects its control port.
 * Exactly one `port` config.
     * This is the Tor control port on `localhost` where StemNS connects to.
+    * Example configs are provided for system-wide Tor and Tor Browser.
 * Any number of `service` configs.
     * These are mappings between eTLD's and Prop279 providers.
-
-StemNS will currently connect to a system Tor daemon on `localhost:9051` or you can
-change the port to `9151` in `settings_port.py` to react a Tor Browser
-instance.
+    * See "Name Resolution Services" below.
 
 Tor must be configured with the following option before launching StemNS:
 
@@ -55,15 +53,14 @@ relay, which would be a security issue.
 
 # Name resolution services
 
-By default StemNS daemon is configured with two example name resolution
+StemNS comes with two example name resolution
 services, invoked for resolving `<something>.<service>.onion`:
 * `.pet.onion` implemented in `ns_petname.py` resolves a predefined set
 of names (try, e.g., "http://txtorcon.pet.onion" in Tor Browser).
 * `.demo.onion` always remap to txtorcon's documentation hidden-service. So
   `<anything>.demo.onion` will redirect you to txtorcon's documentation.
 
-You can implement custom services and add them to the map in
-`settings_services.py`.
+You can implement custom services and add them via your own config files.
 
 # Naming Implementations
 
