@@ -14,6 +14,17 @@ StemNS is a fork of the original [TorNS](https://github.com/meejah/TorNS) by mee
 
 # Configuration and usage
 
+StemNS loads configuration from the `config` directory.  Example configurations are included; you can use them verbatim by renaming their extension from `.py.example` to `.py`.  You can also use them as a guide to make your own configurations.  You should include:
+
+* At least one `bootstrap` config.
+    * These are callbacks that run when Tor finishes bootstrap.
+* At least one `exit` config.
+    * These are callbacks that run when Tor disconnects its control port.
+* Exactly one `port` config.
+    * This is the Tor control port on `localhost` where StemNS connects to.
+* Any number of `service` configs.
+    * These are mappings between eTLD's and Prop279 providers.
+
 StemNS will currently connect to a system Tor daemon on `localhost:9051` or you can
 change the port to `9151` in `settings_port.py` to react a Tor Browser
 instance.
