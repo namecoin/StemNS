@@ -447,6 +447,9 @@ def main():
             break
         except stem.SocketError:
             time.sleep(0.005)
+        except ValueError:
+            # port is None
+            time.sleep(0.005)
 
     controller.authenticate()
 

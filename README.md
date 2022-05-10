@@ -22,7 +22,7 @@ StemNS loads configuration from the `config` directory.  Example configurations 
     * These are callbacks that run when Tor disconnects its control port.
 * Exactly one `port` config.
     * This is the Tor control port on `localhost` where StemNS connects to.
-    * Example configs are provided for system-wide Tor and Tor Browser.
+    * Example configs are provided for system-wide Tor, Tor Browser, and `ControlPort auto`.
 * Any number of `service` configs.
     * These are mappings between eTLD's and Prop279 providers.
     * See "Name Resolution Services" below.
