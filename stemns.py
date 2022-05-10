@@ -35,9 +35,9 @@ from stem.response import ControlLine
 from stem.version import Version
 
 tor_control_port = None
-_service_to_command = None
-_bootstrap_callback = None
-_exit_callback = None
+service_to_command = None
+bootstrap_callback = None
+exit_callback = None
 
 
 def load_config_from_dir(searchdir, attrs):
@@ -185,7 +185,7 @@ class _TorNameServiceProtocol(object):
 
 def spawn_name_service(tor, name):
     try:
-        args = _service_to_command[name]
+        args = service_to_command[name]
     except KeyError:
         raise NoService(
             "No such service '{}'".format(name)
@@ -227,7 +227,7 @@ class _Attacher(object):
         suffix = None
         srv = None
 
-        for candidate_suffix in _service_to_command:
+        for candidate_suffix in service_to_command:
             if name.endswith("." + candidate_suffix):
                 suffix = candidate_suffix
                 srv = self._services.get(suffix, None)
@@ -396,7 +396,7 @@ def bootstrap_initial(info):
                 print(f"[debug] Bootstrap initial progress {progress}%")
                 if int(progress) == 100:
                     print("Bootstrap complete, running callback...")
-                    _bootstrap_callback()
+                    bootstrap_callback()
         else:
             status.pop(quoted=status.is_next_quoted())
 
@@ -408,13 +408,13 @@ def bootstrap(status):
 
         if int(progress) == 100:
             print("Bootstrap complete, running callback...")
-            _bootstrap_callback()
+            bootstrap_callback()
 
 
 def socket_state_initial(alive):
     if not alive:
         print("Tor daemon exited; exiting StemNS...")
-        _exit_callback()
+        exit_callback()
 
 
 def socket_state(controller, state, timestamp):
@@ -425,20 +425,20 @@ def socket_state(controller, state, timestamp):
 def main():
     config = load_config_from_dir("config", {
         'tor_control_port': 'shadow',
-        '_service_to_command': 'merge',
-        '_bootstrap_callback': 'call',
-        '_exit_callback': 'call'
+        'service_to_command': 'merge',
+        'bootstrap_callback': 'call',
+        'exit_callback': 'call'
         })
 
     global tor_control_port
-    global _service_to_command
-    global _bootstrap_callback
-    global _exit_callback
+    global service_to_command
+    global bootstrap_callback
+    global exit_callback
 
     tor_control_port = config['tor_control_port']
-    _service_to_command = config['_service_to_command']
-    _bootstrap_callback = config['_bootstrap_callback']
-    _exit_callback = config['_exit_callback']
+    service_to_command = config['service_to_command']
+    bootstrap_callback = config['bootstrap_callback']
+    exit_callback = config['exit_callback']
 
     while True:
         try:
