@@ -428,7 +428,7 @@ def main():
         'service_to_command': 'merge',
         'bootstrap_callback': 'call',
         'exit_callback': 'call'
-        })
+    })
 
     global tor_control_port
     global service_to_command
