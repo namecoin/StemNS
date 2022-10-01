@@ -11,7 +11,8 @@ task:
   install_script:
     - pip install flake8
   flake8_script:
-    - flake8 . --count --select=E,F,W,C90 --show-source --statistics
+    # W503 and W504 are mutually exclusive and controversial, per pycodestyle docs.
+    - flake8 . --count --select=E,F,W,C90 --ignore=W503,W504 --show-source --statistics
   env:
     STEMNS_IMAGE: python:3.7
 
